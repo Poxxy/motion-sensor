@@ -1,5 +1,41 @@
 #include "pico/stdlib.h"
 
+void startup();
+int detect_motion();
+void trigger_light();
+void trigger_buzzer();
+
+//red LED triggered by GP15
+//motion sensor powered by GP16, send signal to GP17
+//buzzer powered by gp18
+
+const uint LIGHT_PIN = 15;
+const uint MOTION_PIN_IN = 17;
+const uint MOTION_PIN_OUT = 16;
+const uint BUZZER_PIN = 18;
+
+
+
+
+int main() {
+
+    startup();
+
+    int detected;
+
+    while (1) {
+        detected = detect_motion();
+        if (detected) {
+            for (int i = 0; i <= 10; i++) {
+                trigger_light();
+                trigger_buzzer();
+            }
+        } sleep_ms(100);
+        
+    }
+
+}
+
 void startup() {
     /*
     Blink 3 times to make it clear the program has started.
@@ -18,90 +54,42 @@ void startup() {
         sleep_ms(250);
     }
 
+    gpio_put(LED_PIN, 1);
+
 }
 
-void led_switch(bool enabled) {
-    /*
-    Refers to on board LED
-    */
-    const uint LED_PIN = PICO_DEFAULT_LED_PIN;
-    gpio_init(LED_PIN);
-    gpio_set_dir(LED_PIN, GPIO_OUT);
-
-    if (enabled) {
-        gpio_put(LED_PIN, 1);
-    } else {
-        gpio_put(LED_PIN,0);
-    }
-}
-
-void flicker_led2() {
-    /*
-    GPI14 is associated with external LED
-    */
-    const uint PIN_14 = 14;
-    gpio_init(PIN_14);
-    gpio_set_dir(PIN_14, GPIO_OUT);
-
-    gpio_put(PIN_14, 1);
-    sleep_ms(250);
-    gpio_put(PIN_14,0);
-}
-
-
-void detect_motion(bool enabled) {
+void trigger_light() {
+    gpio_init(LIGHT_PIN);
+    gpio_set_dir(LIGHT_PIN, GPIO_OUT);
+    gpio_put(LIGHT_PIN, 1);
+    sleep_ms(100);
+    gpio_put(LIGHT_PIN, 0);
     
-    /*
-    GPIO1 and GPIO2 are associated with the motion sensor
-    */
-    const uint PIN_01 = 1;
-    gpio_init(PIN_01);
-    gpio_set_dir(PIN_01, GPIO_OUT);
-
-    const uint PIN_02 = 2;
-    gpio_init(PIN_02);
-    gpio_set_dir(PIN_02, GPIO_IN);
-
-    if (enabled) {
-        gpio_put(PIN_01, 1);
-    } else {
-        gpio_put(PIN_01, 0);
-    }
-
-    if (gpio_get(PIN_02)) {
-        flicker_led2();
-    }
-
 }
 
-int main() {
+void trigger_buzzer() {
+    gpio_init(BUZZER_PIN);
+    gpio_set_dir(BUZZER_PIN, GPIO_OUT);
+    gpio_put(BUZZER_PIN, 1);
+    sleep_ms(100);
+    gpio_put(BUZZER_PIN, 0);
+}
 
-    startup();
-
+int detect_motion() {
     /*
-    Power goes through button. When pressed, button interrupts the signal.
-    This causes on to switch to false which will then stop the sensor
-    until the button is pressed again.
+    Setup PIR sensor. If a signal gets read from AOUT, turn off sensor
+    and send the info forward.
     */
+    gpio_init(MOTION_PIN_OUT);
+    gpio_set_dir(MOTION_PIN_OUT, GPIO_OUT);
+    gpio_init(MOTION_PIN_IN);
+    gpio_set_dir(MOTION_PIN_IN, GPIO_IN);
+    gpio_put(MOTION_PIN_OUT, 1);
 
-   /*
-   GPIO28 is associated with the button.
-   */
-    const uint PIN_28 = 28;
-    gpio_init(PIN_28);
-    gpio_set_dir(PIN_28, GPIO_IN);
-
-    char on = 0;
-
-    while (1) {
-
-        led_switch(on);
-
-        detect_motion(on);
-
-        if (gpio_get(PIN_28)) {
-            on = on ^ 1;
-        }
+    if (gpio_get(MOTION_PIN_IN)) {
+        // gpio_put(MOTION_PIN_OUT, 0);
+        return 1;
+    } else {
+        return 0;
     }
-
 }
